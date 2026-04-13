@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYBERPUNK TCG — COMBINATION ANALYSIS</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --yellow: #F5E642;
+    --cyan: #00F5FF;
+    --red: #FF2D55;
+    --green: #39FF14;
+    --purple: #BF5FFF;
+    --dark: #0A0A0F;
+    --dark2: #111118;
+    --dark3: #1A1A24;
+    --dark4: #222230;
+    --border: rgba(245,230,66,0.2);
+    --border-bright: rgba(245,230,66,0.6);
+    --text: #E8E8F0;
+    --text-dim: rgba(232,232,240,0.5);
+    --font-display: 'Orbitron', monospace;
+    --font-ui: 'Rajdhani', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--dark); color: var(--text); font-family: var(--font-ui); font-size: 16px; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,245,255,0.03) 39px, rgba(0,245,255,0.03) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,245,255,0.03) 39px, rgba(0,245,255,0.03) 40px);
+    pointer-events: none; z-index: 0;
+  }
+  .scanline { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: rgba(0,245,255,0.15); animation: scan 6s linear infinite; pointer-events: none; z-index: 100; }
+  @keyframes scan { 0% { top: -2px; } 100% { top: 100vh; } }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,15,0.95); backdrop-filter: blur(10px); z-index: 50; }
+  .nav-logo { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.15em; color: var(--yellow); }
+  .nav-links { display: flex; gap: 4px; }
+  .nav-link { font-family: var(--font-ui); font-size: 13px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 16px; color: var(--text-dim); text-decoration: none; border: 1px solid transparent; border-radius: 2px; transition: all 0.2s; }
+  .nav-link:hover { color: var(--yellow); border-color: var(--border); }
+  .nav-link.active { color: var(--dark); background: var(--yellow); border-color: var(--yellow); }
+
+  header { padding: 48px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+  .header-eyebrow { font-family: var(--font-mono); font-size: 11px; color: var(--cyan); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px; }
+  h1 { font-family: var(--font-display); font-size: clamp(28px, 5vw, 52px); font-weight: 900; color: var(--yellow); line-height: 1; text-shadow: 0 0 40px rgba(245,230,66,0.3); }
+  h1 span { color: var(--text); }
+  .header-sub { margin-top: 12px; font-size: 14px; color: var(--text-dim); font-weight: 500; letter-spacing: 0.05em; }
+
+  .section-head { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.25em; color: var(--cyan); text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .assumptions { background: var(--dark3); border: 1px solid rgba(0,245,255,0.3); padding: 24px 24px 20px; margin-bottom: 40px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); position: relative; }
+  .assumptions::before { content: 'VALUATION ASSUMPTIONS'; position: absolute; top: -1px; left: 18px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.2em; color: var(--dark); background: var(--cyan); padding: 2px 8px; }
+  .ass-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 8px; }
+  .ass-item { background: var(--dark4); padding: 10px 12px; clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px)); }
+  .ass-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 3px; }
+  .ass-val { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--cyan); }
+  .ass-val.total { color: var(--yellow); }
+  .ass-val.dupe { color: var(--purple); }
+  .ass-note { font-size: 11px; color: var(--text-dim); margin-top: 2px; line-height: 1.3; }
+
+  .combo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-bottom: 48px; }
+  .combo-card { background: var(--dark3); border: 1px solid var(--border); padding: 20px 22px; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); position: relative; transition: border-color 0.2s; }
+  .combo-card:hover { border-color: rgba(245,230,66,0.5); }
+  .combo-card.best-value { border-color: var(--green); }
+  .combo-card.best-value::before { content: 'BEST VALUE'; position: absolute; top: -1px; left: 18px; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.2em; background: var(--green); color: #000; padding: 2px 8px; }
+  .combo-card.recommended { border-color: var(--yellow); }
+  .combo-card.recommended::before { content: 'RECOMMENDED'; position: absolute; top: -1px; left: 18px; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.2em; background: var(--yellow); color: #000; padding: 2px 8px; }
+  .combo-card.skip { border-color: rgba(255,45,85,0.4); opacity: 0.72; }
+  .combo-card.skip::before { content: 'SKIP'; position: absolute; top: -1px; left: 18px; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.2em; background: var(--red); color: #fff; padding: 2px 8px; }
+  .combo-title { font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+  .combo-price { font-family: var(--font-display); font-size: 26px; font-weight: 900; color: var(--yellow); line-height: 1; }
+  .combo-valueline { font-family: var(--font-display); font-size: 12px; font-weight: 700; margin-bottom: 10px; margin-top: 2px; }
+  .val-pos { color: var(--green); }
+  .val-neg { color: var(--red); }
+  .combo-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; margin-bottom: 12px; }
+  .combo-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+  .cs { background: var(--dark4); padding: 8px 10px; clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px)); }
+  .cs-label { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+  .cs-val { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text); }
+  .cs-val.hl { color: var(--yellow); }
+  .combo-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .cbadge { font-size: 9px; font-family: var(--font-mono); padding: 2px 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .cb-y { background: rgba(245,230,66,0.15); color: var(--yellow); border: 1px solid rgba(245,230,66,0.3); }
+  .cb-c { background: rgba(0,245,255,0.1); color: var(--cyan); border: 1px solid rgba(0,245,255,0.25); }
+  .cb-g { background: rgba(57,255,20,0.1); color: var(--green); border: 1px solid rgba(57,255,20,0.25); }
+  .cb-r { background: rgba(255,45,85,0.1); color: var(--red); border: 1px solid rgba(255,45,85,0.25); }
+  .cb-p { background: rgba(191,95,255,0.12); color: var(--purple); border: 1px solid rgba(191,95,255,0.35); }
+  .combo-verdict { font-size: 12px; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 10px; line-height: 1.5; font-style: italic; }
+
+  .chart-panel { background: var(--dark2); border: 1px solid var(--border); padding: 28px 32px; margin-bottom: 20px; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
+  .chart-panel-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--cyan); text-transform: uppercase; margin-bottom: 12px; }
+  .chart-wrap { position: relative; width: 100%; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 1px; flex-shrink: 0; }
+
+  .table-wrap { overflow-x: auto; margin-bottom: 48px; }
+  .compare-table { width: 100%; border-collapse: collapse; min-width: 960px; }
+  .compare-table th { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-bright); white-space: nowrap; }
+  .compare-table th.g { color: var(--green); }
+  .compare-table th.y { color: var(--yellow); }
+  .compare-table td { font-size: 12px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: var(--font-mono); color: var(--text-dim); vertical-align: middle; white-space: nowrap; }
+  .compare-table tr:hover td { background: rgba(245,230,66,0.03); }
+  .compare-table .nc { color: var(--text); font-family: var(--font-ui); font-weight: 600; font-size: 13px; white-space: normal; min-width: 155px; }
+  .compare-table .pc { color: var(--yellow); font-family: var(--font-display); font-weight: 700; font-size: 13px; }
+  .compare-table .vc { color: var(--green); font-family: var(--font-display); font-weight: 700; font-size: 13px; }
+  .compare-table .hl { color: var(--cyan); }
+  .sp { color: var(--green); font-weight: 700; }
+  .sn { color: var(--red); }
+  .check { color: var(--green); }
+  .cross { color: rgba(255,255,255,0.15); }
+  .bb2 { color: var(--purple); font-weight: 700; }
+  .tag-r { display: inline-block; background: var(--yellow); color: var(--dark); font-size: 8px; font-family: var(--font-mono); letter-spacing: 0.1em; padding: 1px 5px; margin-left: 5px; vertical-align: middle; }
+  .tag-v { display: inline-block; background: var(--green); color: #000; font-size: 8px; font-family: var(--font-mono); letter-spacing: 0.1em; padding: 1px 5px; margin-left: 5px; vertical-align: middle; }
+  .tag-s { display: inline-block; background: var(--red); color: #fff; font-size: 8px; font-family: var(--font-mono); letter-spacing: 0.1em; padding: 1px 5px; margin-left: 5px; vertical-align: middle; }
+  hr.div { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+  .back-btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; text-decoration: none; padding: 14px 28px; background: transparent; color: var(--cyan); border: 1px solid rgba(0,245,255,0.4); transition: all 0.2s; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  .back-btn:hover { background: rgba(0,245,255,0.08); }
+  @media (max-width: 700px) { .combo-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<nav>
+  <div class="nav-logo">Cyberpunk TCG // Pledge Tool</div>
+  <div class="nav-links">
+    <a href="calculator.html" class="nav-link">Calculator</a>
+    <a href="analysis.html" class="nav-link active">Analysis</a>
+  </div>
+</nav>
+
+<div class="container">
+  <header>
+    <div class="header-eyebrow">// COMBINATION ANALYSIS v2.0</div>
+    <h1>PLEDGE<br><span>ANALYSIS</span></h1>
+    <p class="header-sub">All meaningful builds in $300–$1,200 range, with full monetary value accounting and 2× Beta Box comparison.</p>
+  </header>
+
+  <div class="section-head">00 // Valuation assumptions</div>
+  <div class="assumptions">
+    <div class="ass-grid">
+      <div class="ass-item"><div class="ass-label">Pack price basis</div><div class="ass-val">$4.72</div><div class="ass-note">$170 ÷ 36 packs per display</div></div>
+      <div class="ass-item"><div class="ass-label">Beta Box — neoprene playmat</div><div class="ass-val">$25</div><div class="ass-note">Official w/ game zone outlines</div></div>
+      <div class="ass-item"><div class="ass-label">Beta Box — Legend Pack</div><div class="ass-val">$50</div><div class="ass-note">Foil V: Corporate Exile + legends pool. Speculative — could be more.</div></div>
+      <div class="ass-item"><div class="ass-label">Beta Box — card sleeves</div><div class="ass-val">$20</div><div class="ass-note">100-card sleeve set</div></div>
+      <div class="ass-item"><div class="ass-label">Beta Box — promo cards</div><div class="ass-val">$20</div><div class="ass-note">Full set, conservative estimate</div></div>
+      <div class="ass-item"><div class="ass-label">Beta Box — 1 booster pack</div><div class="ass-val">$4.72</div><div class="ass-note">At display rate</div></div>
+      <div class="ass-item"><div class="ass-label">Beta Box total (1×)</div><div class="ass-val total">$119.72</div><div class="ass-note">≈ $120 rounded</div></div>
+      <div class="ass-item"><div class="ass-label">2nd Beta Box value</div><div class="ass-val dupe">$120</div><div class="ass-note">Same value — collector dupes tradeable/resaleable</div></div>
+      <div class="ass-item"><div class="ass-label">Starter deck</div><div class="ass-val">$29</div><div class="ass-note">Add-on price as proxy</div></div>
+      <div class="ass-item"><div class="ass-label">Hanako metal card</div><div class="ass-val">$50</div><div class="ass-note">Iconic Rare, KS-exclusive. Speculative.</div></div>
+      <div class="ass-item"><div class="ass-label">Premium dice set</div><div class="ass-val">$95</div><div class="ass-note">Dispel custom-mold, add-on price</div></div>
+    </div>
+  </div>
+
+  <div class="section-head">01 // Combinations assessed</div>
+  <div class="combo-grid" id="comboGrid"></div>
+
+  <div class="section-head">02 // Pledge cost vs estimated retail value</div>
+  <div class="chart-panel">
+    <div class="chart-panel-title">// side-by-side: what you pay vs what you get</div>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(245,230,66,0.7)"></div>Pledge cost</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#39FF14"></div>Est. value (savings)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FF2D55"></div>Est. value (premium)</div>
+    </div>
+    <div class="chart-wrap" style="height:340px;">
+      <canvas id="chartValueVsCost" role="img" aria-label="Grouped bar chart comparing pledge cost against estimated retail value for each combination">Yellow bars show pledge cost, green/red bars show estimated retail value — green means you save, red means you pay a premium.</canvas>
+    </div>
+  </div>
+
+  <div class="section-head">03 // Savings or premium per build</div>
+  <div class="chart-panel">
+    <div class="chart-panel-title">// estimated value minus pledge cost — positive = you save money vs buying separately</div>
+    <div class="chart-wrap" style="height:300px;">
+      <canvas id="chartSavings" role="img" aria-label="Bar chart showing net savings or premium for each combination">Positive bars show how much you save versus retail. Negative bars show the Kickstarter premium paid above estimated retail value.</canvas>
+    </div>
+  </div>
+
+  <div class="section-head">04 // Pack efficiency (packs per $100)</div>
+  <div class="chart-panel">
+    <div class="chart-panel-title">// booster packs received per $100 pledged — higher is better</div>
+    <div class="chart-wrap" style="height:340px;">
+      <canvas id="chartEfficiency" role="img" aria-label="Horizontal bar chart of packs per $100 spent for each combination">Longer bars indicate better pack-per-dollar value.</canvas>
+    </div>
+  </div>
+
+  <div class="section-head">05 // Estimated value breakdown by component</div>
+  <div class="chart-panel">
+    <div class="chart-panel-title">// what your money is buying — stacked estimated value per component</div>
+    <div class="legend-row" id="breakdownLegend"></div>
+    <div class="chart-wrap" style="height:320px;">
+      <canvas id="chartBreakdown" role="img" aria-label="Stacked bar chart showing estimated value breakdown per combination by component type">Each bar is divided into packs, decks, dice, Beta Box value, and Hanako card value.</canvas>
+    </div>
+  </div>
+
+  <hr class="div">
+  <div class="section-head">06 // Full comparison matrix</div>
+  <div class="table-wrap">
+    <table class="compare-table" id="compareTable"></table>
+  </div>
+
+  <a href="calculator.html" class="back-btn">← Back to Calculator</a>
+</div>
+
+<script>
+const PACK_PRICE   = 170 / 36;
+const BETA_BOX_VAL = 120;
+const DECK_VAL     = 29;
+const DICE_VAL     = 95;
+const HANAKO_VAL   = 50;
+
+function pv(n) { return Math.round(n * PACK_PRICE); }
+
+const COMBOS = [
+  { id:'net1',    title:'Netrunner ×1',              price:349,  packs:72,  decks:2, dice:0, betaBoxes:1, hanako:false, class:'',           desc:'Minimum Beta Box entry. No dice. Express Q3 2026.',       verdict:'Floor tier for Beta Box access. Dice must be added separately ($95), making it $444 total for parity — at which point Street Cred ($499) is only $55 more for 36 extra packs.' },
+  { id:'net_d',   title:'Netrunner + Dice Add-on',   price:444,  packs:72,  decks:2, dice:1, betaBoxes:1, hanako:false, class:'skip',        desc:'Netrunner + $95 dice add-on.',                            verdict:'Hard to recommend. Street Cred ($499) gives you 36 more packs for $55 extra, with dice already included. You would be paying more per pack for no benefit.' },
+  { id:'sc1',     title:'Street Cred ×1',            price:499,  packs:108, decks:2, dice:1, betaBoxes:1, hanako:false, class:'best-value',  desc:'108 packs, 2 decks, 1 dice set, 1 Beta Box. Express.',   verdict:'The clear single-tier value winner. Dice included means it beats Netrunner + add-on by 36 packs for only $55 more. Best entry if you want to play without the Hanako card.' },
+  { id:'sc_d',    title:'Street Cred + Extra Dice',  price:594,  packs:108, decks:2, dice:2, betaBoxes:1, hanako:false, class:'',            desc:'Street Cred + $95 second dice design.',                  verdict:'Clean choice if you want two dice designs. Still strong value ratio and well under $700.' },
+  { id:'sc2',     title:'Street Cred ×2',            price:998,  packs:216, decks:4, dice:2, betaBoxes:2, hanako:false, class:'',            desc:'216 packs, 4 decks, 2 dice sets, 2 Beta Boxes.',         verdict:'Player-first rival to Padre\'s Blessing. Same packs and decks, 2 dice vs 1, and crucially 2 Beta Boxes instead of 1. With each Beta Box at $120, this build has higher estimated value than Padre\'s ($998 cost vs $1,097 value). Best raw-value choice at ~$1k if the Hanako card doesn\'t matter to you.' },
+  { id:'pb1',     title:"Padre's Blessing ×1",       price:999,  packs:216, decks:4, dice:1, betaBoxes:1, hanako:true,  class:'recommended', desc:'216 packs, 4 decks, 1 dice set, 1 Beta Box, Hanako card.', verdict:'The collector\'s choice. Same packs/decks as 2× Street Cred, one fewer dice set, one fewer Beta Box — but the Hanako Arasaka Iconic Rare metal card is a Kickstarter-exclusive unavailable at any lower tier. Slightly lower estimated value than 2× SC but the metal card has intangible collectibility value beyond our $50 estimate.' },
+  { id:'pb_d',    title:"Padre's Blessing + Dice",   price:1094, packs:216, decks:4, dice:2, betaBoxes:1, hanako:true,  class:'',            desc:'Padre\'s + $95 dice add-on. 216 packs, 2 dice sets, Hanako.', verdict:'Best all-around build under $1,200. Matches 2× Street Cred on packs, decks, and dice, adds the Hanako metal card, and sits $106 under the $1,200 ceiling. Trades the second Beta Box for the Hanako — collector\'s version of the ~$1k tier.' },
+  { id:'sc_net',  title:'Street Cred + Netrunner',   price:848,  packs:180, decks:4, dice:1, betaBoxes:2, hanako:false, class:'skip',        desc:'Mixed tiers. 180 packs, 4 decks, 1 dice, 2 Beta Boxes.', verdict:'Awkward combo. You get a second Beta Box but only 1 dice set, and 2× Street Cred at $998 gives 36 more packs plus an extra dice set for only $150 more. The second Beta Box doesn\'t justify the gap.' },
+];
+
+COMBOS.forEach(c => {
+  c.estValue = pv(c.packs) + (c.decks * DECK_VAL) + (c.dice * DICE_VAL) + (c.betaBoxes * BETA_BOX_VAL) + (c.hanako ? HANAKO_VAL : 0);
+  c.savings  = c.estValue - c.price;
+  c.ppd      = (c.packs / c.price * 100).toFixed(1);
+});
+
+function buildComboCards() {
+  const g = document.getElementById('comboGrid');
+  COMBOS.forEach(c => {
+    const badges = [];
+    if (c.betaBoxes === 1) badges.push(['cb-y','1× Beta Box ($120)']);
+    if (c.betaBoxes === 2) badges.push(['cb-p','2× Beta Box ($240)']);
+    if (c.hanako)          badges.push(['cb-c','Hanako Metal Card']);
+    if (c.dice > 1)        badges.push(['cb-g', c.dice + ' Dice Sets']);
+
+    const sv = c.savings >= 0
+      ? `<span class="val-pos">+$${c.savings} vs retail</span>`
+      : `<span class="val-neg">−$${Math.abs(c.savings)} vs retail</span>`;
+
+    g.innerHTML += `<div class="combo-card ${c.class}">
+      <div class="combo-title">${c.title}</div>
+      <div class="combo-price">$${c.price.toLocaleString()}</div>
+      <div class="combo-valueline">Est. value $${c.estValue.toLocaleString()} &nbsp;·&nbsp; ${sv}</div>
+      <div class="combo-desc">${c.desc}</div>
+      <div class="combo-stats">
+        <div class="cs"><div class="cs-label">Packs</div><div class="cs-val">${c.packs}</div></div>
+        <div class="cs"><div class="cs-label">Packs / $100</div><div class="cs-val">${c.ppd}</div></div>
+        <div class="cs"><div class="cs-label">Est. Value</div><div class="cs-val hl">$${c.estValue}</div></div>
+      </div>
+      <div class="combo-badges">${badges.map(([cl,l])=>`<span class="cbadge ${cl}">${l}</span>`).join('')}</div>
+      <div class="combo-verdict">"${c.verdict}"</div>
+    </div>`;
+  });
+}
+
+function buildCharts() {
+  const LABELS = COMBOS.map(c => c.title.length > 22 ? c.title.substring(0,20)+'…' : c.title);
+
+  new Chart(document.getElementById('chartValueVsCost'), {
+    type: 'bar',
+    data: {
+      labels: LABELS,
+      datasets: [
+        { label: 'Pledge cost', data: COMBOS.map(c => c.price), backgroundColor: 'rgba(245,230,66,0.75)', borderWidth: 0 },
+        { label: 'Est. retail value', data: COMBOS.map(c => c.estValue), backgroundColor: COMBOS.map(c => c.savings >= 0 ? 'rgba(57,255,20,0.7)' : 'rgba(255,45,85,0.6)'), borderWidth: 0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1A1A24', borderColor: 'rgba(245,230,66,0.4)', borderWidth: 1, titleColor: '#F5E642', bodyColor: '#E8E8F0', padding: 10, callbacks: { label: ctx => `${ctx.dataset.label}: $${ctx.raw.toLocaleString()}` } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(232,232,240,0.5)', font: { family: 'Share Tech Mono', size: 9 }, maxRotation: 30, autoSkip: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(232,232,240,0.5)', font: { family: 'Share Tech Mono', size: 10 }, callback: v => '$'+v } }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('chartSavings'), {
+    type: 'bar',
+    data: {
+      labels: LABELS,
+      datasets: [{ label: 'Net savings vs retail', data: COMBOS.map(c => c.savings), backgroundColor: COMBOS.map(c => c.savings >= 0 ? 'rgba(57,255,20,0.75)' : 'rgba(255,45,85,0.65)'), borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1A1A24', borderColor: 'rgba(245,230,66,0.4)', borderWidth: 1, titleColor: '#F5E642', bodyColor: '#E8E8F0', padding: 10, callbacks: { label: ctx => (ctx.raw >= 0 ? 'You save: $' : 'KS premium: $') + Math.abs(ctx.raw).toLocaleString() } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(232,232,240,0.5)', font: { family: 'Share Tech Mono', size: 9 }, maxRotation: 30, autoSkip: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(232,232,240,0.5)', font: { family: 'Share Tech Mono', size: 10 }, callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v) } }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('chartEfficiency'), {
+    type: 'bar',
+    data: {
+      labels: COMBOS.map(c => c.title),
+      datasets: [{ label: 'Packs per $100', data: COMBOS.map(c => parseFloat(c.ppd)), backgroundColor: COMBOS.map(c => c.class === 'best-value' ? '#39FF14' : c.class === 'recommended' ? '#F5E642' : c.class === 'skip' ? 'rgba(255,45,85,0.45)' : '#00F5FF'), borderWidth: 0 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1A1A24', borderColor: 'rgba(245,230,66,0.4)', borderWidth: 1, bodyColor: '#E8E8F0', padding: 10, callbacks: { label: ctx => ctx.raw + ' packs per $100' } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(232,232,240,0.5)', font: { family: 'Share Tech Mono', size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(232,232,240,0.6)', font: { family: 'Share Tech Mono', size: 10 } } }
+      }
+    }
+  });
+
+  const dsSets = [
+    { label: 'Booster packs',     fn: c => pv(c.packs),               color: '#F5E642' },
+    { label: 'Starter decks',     fn: c => c.decks * DECK_VAL,         color: '#00F5FF' },
+    { label: 'Dice sets',         fn: c => c.dice * DICE_VAL,          color: '#39FF14' },
+    { label: 'Beta Box(es)',      fn: c => c.betaBoxes * BETA_BOX_VAL, color: '#BF5FFF' },
+    { label: 'Hanako metal card', fn: c => c.hanako ? HANAKO_VAL : 0,  color: '#FF2D55' },
+  ];
+
+  document.getElementById('breakdownLegend').innerHTML = dsSets.map(d =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${d.color}"></div>${d.label}</div>`).join('');
+
+  new Chart(document.getElementById('chartBreakdown'), {
+    type: 'bar',
+    data: {
+      labels: LABELS,
+      datasets: dsSets.map(d => ({ label: d.label, data: COMBOS.map(c => Math.round(d.fn(c))), backgroundColor: d.color, borderWidth: 0 }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1A1A24', borderColor: 'rgba(245,230,66,0.4)', borderWidth: 1, titleColor: '#F5E642', bodyColor: '#E8E8F0', padding: 10, callbacks: { label: ctx => `${ctx.dataset.label}: $${ctx.raw}` } } },
+      scales: {
+        x: { stacked: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(232,232,240,0.5)', font: { family: 'Share Tech Mono', size: 9 }, maxRotation: 30, autoSkip: false } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(232,232,240,0.5)', font: { family: 'Share Tech Mono', size: 10 }, callback: v => '$'+v } }
+      }
+    }
+  });
+}
+
+function buildTable() {
+  const t = document.getElementById('compareTable');
+  t.innerHTML = `<thead><tr>
+    <th>Build</th><th>Cost</th><th>Packs</th><th>Packs/$100</th>
+    <th>Decks</th><th>Dice</th><th>Beta Boxes</th><th>Hanako</th>
+    <th class="g">Est. Value</th><th class="y">Savings</th>
+  </tr></thead>`;
+  const tb = document.createElement('tbody');
+  COMBOS.forEach(c => {
+    const tag = c.class === 'recommended' ? '<span class="tag-r">REC</span>'
+      : c.class === 'best-value' ? '<span class="tag-v">VALUE</span>'
+      : c.class === 'skip' ? '<span class="tag-s">SKIP</span>' : '';
+    const sv = c.savings >= 0
+      ? `<span class="sp">+$${c.savings}</span>`
+      : `<span class="sn">−$${Math.abs(c.savings)}</span>`;
+    const bb = c.betaBoxes === 2
+      ? `<span class="bb2">2× ($240)</span>`
+      : `<span class="check">1× ($120)</span>`;
+    tb.innerHTML += `<tr>
+      <td class="nc">${c.title}${tag}</td>
+      <td class="pc">$${c.price.toLocaleString()}</td>
+      <td class="hl">${c.packs}</td>
+      <td>${c.ppd}</td>
+      <td>${c.decks}</td>
+      <td>${c.dice}</td>
+      <td>${bb}</td>
+      <td>${c.hanako ? '<span class="check">✓</span>' : '<span class="cross">✗</span>'}</td>
+      <td class="vc">$${c.estValue.toLocaleString()}</td>
+      <td>${sv}</td>
+    </tr>`;
+  });
+  t.appendChild(tb);
+}
+
+buildComboCards();
+buildCharts();
+buildTable();
+</script>
+</body>
+</html>
